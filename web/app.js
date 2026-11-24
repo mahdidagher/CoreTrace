@@ -30,14 +30,73 @@ function diagram(frame, eventFrame, phase, progress) {
     ctx.fillText(value, x, y);
   }
 
-  function block(x, y, w, title, detail, active, h = 46) {
-    ctx.fillStyle = active ? "#193a3c" : "#172638";
-    ctx.fillRect(x, y, w, h);
+  function block(x, y, w, title, detail, active, shape) {
+    const h = 46;
+    const fill = active ? "#193a3c" : "#172638";
+    ctx.fillStyle = fill;
     ctx.strokeStyle = active ? colors.data : colors.idle;
     ctx.lineWidth = active ? 1.7 : 1;
-    ctx.strokeRect(x, y, w, h);
-    text(x + w / 2, y + 15, title);
-    text(x + w / 2, y + 33, detail, "#aec7d9", 12);
+
+    function polygon(points) {
+      ctx.beginPath();
+      points.forEach(([dx, dy], i) => {
+        if (i) ctx.lineTo(x + dx, y + dy);
+        else ctx.moveTo(x + dx, y + dy);
+      });
+      ctx.closePath();
+    }
+
+    switch (shape) {
+      case "alu":
+        polygon([[0, 0], [w, 10], [w, 36], [0, h], [0, 29], [13, 23], [0, 17]]);
+        break;
+      case "mux":
+        polygon([[0, 12], [30, 0], [w, 0], [w, h], [30, h], [0, h - 12]]);
+        break;
+      case "decoder":
+        polygon([[0, 0], [w - 15, 0], [w, 13], [w, 33], [w - 15, h], [0, h]]);
+        break;
+      case "control":
+        polygon([[12, 0], [w - 12, 0], [w, 10], [w, 36], [w - 12, h], [12, h], [0, 36], [0, 10]]);
+        break;
+      case "pc":
+        polygon([[0, 0], [w, 0], [w, h], [0, h], [0, 31], [9, 24], [0, 17]]);
+        break;
+      case "memory":
+        ctx.beginPath();
+        ctx.ellipse(x + w / 2, y + 8, w / 2, 8, 0, Math.PI, 2 * Math.PI);
+        ctx.ellipse(x + w / 2, y + h - 7, w / 2, 7, 0, 0, Math.PI);
+        ctx.closePath();
+        break;
+      default:
+        if (shape === "rom") {
+          ctx.beginPath();
+          for (let pin = 15; pin < w; pin += 15) {
+            ctx.moveTo(x + pin, y - 5);
+            ctx.lineTo(x + pin, y);
+            ctx.moveTo(x + pin, y + h);
+            ctx.lineTo(x + pin, y + h + 5);
+          }
+          ctx.stroke();
+        }
+        if (shape === "registers") {
+          for (const offset of [8, 4]) {
+            ctx.fillRect(x - offset, y - offset, w, h);
+            ctx.strokeRect(x - offset, y - offset, w, h);
+          }
+        }
+        polygon([[0, 0], [w, 0], [w, h], [0, h]]);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    if (shape === "memory") {
+      ctx.beginPath();
+      ctx.ellipse(x + w / 2, y + 8, w / 2, 8, 0, 0, Math.PI);
+      ctx.stroke();
+    }
+    text(x + w / 2, y + (shape === "memory" ? 24 : 16), title);
+    text(x + w / 2, y + (shape === "memory" ? 38 : 33), detail, "#aec7d9", 12);
   }
 
   function wire(points, active, control = false, delay = 0) {
@@ -107,37 +166,37 @@ function diagram(frame, eventFrame, phase, progress) {
     path([[275, 63], [328, 63]], fetch, false, 0.42);
     path([[389, 86], [389, 111]], decoding, true);
     path([[328, 125], [72, 125], [72, 86]], commit, true);
-    path([[328, 75], [294, 75], [294, 151], [103, 151], [103, 180]], decoding && (event.alu || event.store || event.write));
+    path([[328, 75], [294, 75], [294, 151], [103, 151], [103, 172]], decoding && (event.alu || event.store || event.write));
     path([[450, 63], [473, 63], [473, 197], [447, 197]], read || store);
     path([[350, 157], [350, 165], [230, 165], [230, 180]], alu, true);
     path([[433, 157], [433, 180]], read || store, true);
     path([[450, 132], [461, 132], [461, 269], [380, 269], [380, 279]], write, true);
     path([[156, 194], [181, 194]], alu, false, 0.25);
-    path([[156, 210], [181, 210]], alu, false, 0.25);
+    path([[156, 212], [181, 212]], alu, false, 0.25);
     path([[134, 226], [134, 247], [360, 247], [360, 226]], store);
-    path([[228, 226], [228, 263], [269, 263], [269, 279]], write && event.alu);
+    path([[275, 203], [287, 203], [287, 263], [269, 263], [269, 279]], write && event.alu);
     path([[392, 226], [392, 255], [339, 255], [339, 279]], write && event.read);
     path([[230, 303], [79, 303], [79, 226]], write, false, 0.42);
 
     const port = index === 0 ? 175 : 870;
-    path([[409, 226], [409, 345], [port - left, 345], [port - left, 366]], store, false, 0.42);
-    path([[port + 22 - left, 366], [port + 22 - left, 355], [428, 355], [428, 226]], read);
+    path([[409, 226], [409, 345], [port - left, 345], [port - left, 372]], store, false, 0.42);
+    path([[port + 22 - left, 372], [port + 22 - left, 355], [428, 355], [428, 226]], read);
     if (read || store) {
       const value = (read ? eventFrame.cores[index] : core).registers[(event.word >> 9) & 7];
       memoryOps.push("C" + index + (read ? " reads snapshot " : commit ? " commits " : " buffers ") + "M[" + address + "] = " + hex(value));
     }
 
-    unit(13, 40, 94, "PC / +1", core ? hex(core.pc, 4) : "—", fetch || commit);
-    unit(151, 40, 124, "Instruction ROM", event ? "PC " + hex(event.pc, 4) : "16-bit words", fetch);
-    unit(328, 40, 122, "Decoder", event ? "IR " + hex(event.word, 4) : "opcode / fields", decoding);
-    unit(328, 111, 122, "Control unit", event?.halt ? "HALT · hold PC" : event ? instruction : "idle", decoding || Boolean(commit && event.halt));
-    unit(26, 180, 130, "Register file", "R0–R7 × 8 bits", alu || write || store);
-    unit(181, 180, 94, "ALU", alu ? instruction : "8-bit", alu);
+    unit(13, 40, 94, "PC / +1", core ? hex(core.pc, 4) : "—", fetch || commit, "pc");
+    unit(151, 40, 124, "Instruction ROM", event ? "PC " + hex(event.pc, 4) : "16-bit words", fetch, "rom");
+    unit(328, 40, 122, "Decoder", event ? "IR " + hex(event.word, 4) : "opcode / fields", decoding, "decoder");
+    unit(328, 111, 122, "Control unit", event?.halt ? "HALT · hold PC" : event ? instruction : "idle", decoding || Boolean(commit && event.halt), "control");
+    unit(26, 180, 130, "Register file", "R0–R7 × 8 bits", alu || write || store, "registers");
+    unit(181, 180, 94, "ALU", alu ? instruction : "8-bit", alu || Boolean(write && event.alu), "alu");
     unit(332, 180, 115, "Memory I/O", read || store ? "0x" + address : "8-bit bus", read || store);
-    unit(230, 279, 150, "Writeback MUX", write ? (event.read ? "memory → Rd" : "ALU → Rd") : "idle", write);
+    unit(230, 279, 150, "Writeback MUX", write ? (event.read ? "memory → Rd" : "ALU → Rd") : "idle", write, "mux");
   }
   block(155, 366, 750, "Shared data memory · 256 × 8 bits",
-    memoryOps.join("    |    ") || "Read start-of-clock snapshot · commit stores at clock end", memoryOps.length);
+    memoryOps.join("    |    ") || "Read start-of-clock snapshot · commit stores at clock end", memoryOps.length, "memory");
 }
 
 function element(tag, text, className) {
