@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dual-Core CPU Simulator</title>
+<link rel="stylesheet" href="/style.css">
+<script defer src="/app.js"></script>
+</head>
+<body>
+<main>
+<header class="mast"><div><p class="eyebrow">CCEE 324 / COMPUTER ORGANIZATION</p><h1>Dual-Core CPU Simulator</h1></div><div id="clock" class="clock">CLOCK 00</div></header>
+<div class="workspace">
+<aside class="panel controls">
+<div class="tabs" aria-label="Simulation mode"><button id="instructionMode" aria-pressed="true">Instruction</button><button id="programMode" aria-pressed="false">Programs</button></div>
+<section id="instructionPanel">
+<h2>Trace an instruction</h2>
+<label for="opcode">Instruction</label><select id="opcode"></select>
+<label for="target">Execute on</label><select id="target"><option value="0">Core 0</option><option value="1">Core 1</option></select>
+<label for="command">Assembly</label><input id="command" spellcheck="false">
+<details><summary>Starting values</summary><div class="seed">
+<label>R1<input id="r1" value="12"></label><label>R2<input id="r2" value="3"></label><label>M[20]<input id="sample" value="42"></label>
+</div><p>Values accept decimal, 0x hex, or 0b binary. M[20] is address 0x20.</p></details>
+<button id="execute" class="primary">Start instruction</button>
+</section>
+<section id="programPanel" hidden>
+<h2>Assembly programs</h2>
+<label for="source0">Core 0</label><textarea id="source0" spellcheck="false" rows="7"></textarea>
+<label for="source1">Core 1</label><textarea id="source1" spellcheck="false" rows="7"></textarea>
+<div class="actions"><button id="assemble" class="primary">Assemble</button><button id="demo">Load demo</button></div>
+</section>
+<p id="status" role="status"></p>
+</aside>
+<section class="panel circuit">
+<div class="section-head"><h2>Live datapath <small id="stage" aria-live="polite">Ready</small></h2><div class="legend"><span>Data path</span><span>Control</span></div></div>
+<div class="canvas-wrap"><canvas id="diagram" aria-label="Circuit connections for both cores and shared memory"></canvas></div>
+<div class="transport"><button id="reset">Reset</button><button id="run" class="primary">Run</button><button id="pause">Pause</button></div>
+</section>
+</div>
+<div class="inspect">
+<section class="panel"><h2>Registers <small>HEX</small></h2><div id="registers"></div></section>
+<section class="panel"><h2>Shared memory <small>HEX</small></h2><div id="memory"></div></section>
+<section class="panel"><h2>Execution trace</h2><div id="trace" aria-live="polite"></div></section>
+</div>
+</main>
+</body>
+</html>
