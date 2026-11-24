@@ -3,7 +3,8 @@ const hex = (value, width = 2) => value.toString(16).toUpperCase().padStart(widt
 const canvas = $("diagram");
 const ctx = canvas.getContext("2d");
 const stageDuration = 1150;
-let animation = null, progress = 0, stageStarted;
+let animation = null, progress = 0, lastAnimationTime;
+let speed = 1;
 let config, frames = [], cursor = 0, timer = null, mode = "instruction", requestId = 0;
 
 const stages = ["Commit", "Fetch", "Decode", "Execute"];
@@ -216,6 +217,8 @@ function render() {
   $("run").disabled = !lastCursor() || Boolean(timer);
   $("reset").disabled = !frame;
   $("pause").disabled = !timer;
+  const memoryScroll = $("memory").scrollTop;
+  $("memoryAccess").textContent = "";
   for (const id of ["registers", "memory", "trace"]) $(id).replaceChildren();
   if (!frame) return;
 
@@ -230,20 +233,37 @@ function render() {
     $("registers").append(row);
   });
 
-  const memoryEvents = phase === 3 || phase === 0 ? eventFrame.events : [];
-  const addresses = new Set(memoryEvents.filter(e => e.read || e.store).map(e => e.word & 255));
-  for (let offset = 0; offset < 256; offset += 16) {
-    const row = element("div", "", "memrow");
-    row.append(element("span", hex(offset), "addr"));
-    frame.memory.slice(offset, offset + 16).forEach((value, index) => {
-      const address = offset + index;
-      const cell = element("span", hex(value), addresses.has(address) ? "byte used" : "byte");
-      cell.title = "Address 0x" + hex(address);
-      row.append(cell);
-    });
-    $("memory").append(row);
+  const accesses = new Map();
+  const snapshot = phase ? frame : frames[position - 1];
+  if (snapshot && (phase === 3 || phase === 0)) {
+    for (const event of eventFrame.events.filter(event => event.read || event.store)) {
+      const address = event.word & 255;
+      const label = "0x" + hex(address);
+      const value = event.store ? snapshot.cores[event.core].registers[(event.word >> 9) & 7]
+        : snapshot.memory[address];
+      const description = event.store ? "writes" : "reads";
+      const access = accesses.get(address) ?? {read: false, store: false};
+      access.read ||= event.read;
+      access.store ||= event.store;
+      accesses.set(address, access);
+      $("memoryAccess").append(element("div", "C" + event.core + " " + description + " 0x" + hex(value)
+        + (event.store ? " to " : " from ") + label + (event.store && phase === 3 ? " (buffered)" : event.read ? " (snapshot)" : "")));
+    }
   }
-  if (addresses.size) $("memory").scrollTop = Math.floor([...addresses][0] / 16) * $("memory").firstChild.offsetHeight;
+  if (!accesses.size) $("memoryAccess").textContent = "Address above each byte value. Both are hex.";
+
+  let firstActiveCell;
+  frame.memory.forEach((value, address) => {
+    const access = accesses.get(address);
+    const cell = element("div", "", "memory-cell");
+    if (access?.read) cell.classList.add("memory-read");
+    if (access?.store) cell.classList.add("memory-write");
+    cell.append(element("span", "0x" + hex(address), "memory-address"),
+      element("strong", hex(value), "memory-value"));
+    $("memory").append(cell);
+    if (access && !firstActiveCell) firstActiveCell = cell;
+  });
+  $("memory").scrollTop = firstActiveCell ? firstActiveCell.offsetTop : memoryScroll;
 
   const history = frames.slice(Math.max(1, position - 9), position + 1).reverse();
   for (const item of history) {
@@ -286,8 +306,9 @@ function pause() {
 }
 
 function animate(now) {
-  if (stageStarted === undefined) stageStarted = now - progress * stageDuration;
-  progress = Math.min(1, (now - stageStarted) / stageDuration);
+  const elapsed = now - (lastAnimationTime ?? now);
+  lastAnimationTime = now;
+  progress = Math.min(1, progress + elapsed * speed / stageDuration);
   drawCircuit();
   if (progress === 1) {
     if (cursor >= lastCursor()) {
@@ -298,7 +319,6 @@ function animate(now) {
     }
     ++cursor;
     progress = 0;
-    stageStarted = now;
     render();
   }
   animation = requestAnimationFrame(animate);
@@ -310,7 +330,7 @@ function play() {
     cursor = 1;
     progress = 0;
   }
-  stageStarted = undefined;
+  lastAnimationTime = undefined;
   timer = true;
   animation = requestAnimationFrame(animate);
   render();
@@ -384,6 +404,10 @@ $("reset").onclick = () => {
   render();
 };
 $("run").onclick = play;
+$("speed").oninput = event => {
+  speed = Number(event.target.value);
+  $("speedValue").value = speed + "×";
+};
 $("pause").onclick = () => { pause(); render(); };
 $("command").onkeydown = event => { if (event.key === "Enter") load(true); };
 for (const id of ["command", "target", "r1", "r2", "sample", "source0", "source1"]) $(id).oninput = invalidate;

@@ -34,12 +34,13 @@
 <section class="panel circuit">
 <div class="section-head"><h2>Live datapath <small id="stage" aria-live="polite">Ready</small></h2><div class="legend"><span>Data path</span><span>Control</span></div></div>
 <div class="canvas-wrap"><canvas id="diagram" aria-label="Circuit connections for both cores and shared memory"></canvas></div>
-<div class="transport"><button id="reset">Reset</button><button id="run" class="primary">Run</button><button id="pause">Pause</button></div>
+<div class="transport"><button id="reset">Reset</button><button id="run" class="primary">Run</button><button id="pause">Pause</button>
+<label class="speed" for="speed">Speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><output id="speedValue" for="speed">1×</output></label></div>
 </section>
 </div>
 <div class="inspect">
 <section class="panel"><h2>Registers <small>HEX</small></h2><div id="registers"></div></section>
-<section class="panel"><h2>Shared memory <small>HEX</small></h2><div id="memory"></div></section>
+<section class="panel"><h2>Shared memory <small>256 BYTES</small></h2><div id="memoryAccess" class="memory-access"></div><div id="memory" class="memory-grid" tabindex="0" aria-label="Shared memory addresses and byte values"></div></section>
 <section class="panel"><h2>Execution trace</h2><div id="trace" aria-live="polite"></div></section>
 </div>
 </main>
