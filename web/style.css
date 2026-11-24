@@ -12,9 +12,91 @@ button,select,input,textarea{font:inherit;color:inherit;background:#19273a;borde
 .speed input{width:clamp(96px,13vw,165px);padding:0;accent-color:var(--mint)}
 .speed output{min-width:4ch;color:var(--mint);font-family:Consolas,monospace}
 .memory-access{min-height:1.2em;color:var(--muted);font:12px/1.4 Consolas,monospace;margin:0 0 8px}
-.memory-grid{position:relative;display:grid;grid-template-columns:repeat(auto-fit,minmax(46px,1fr));gap:4px;max-height:180px;overflow:auto;padding-right:4px}
-.memory-cell{display:grid;justify-items:center;gap:1px;padding:3px 1px;border:1px solid var(--edge);border-radius:4px;background:#19273a;font-family:Consolas,monospace}
+.memory-grid{position:relative;display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:4px;max-height:180px;overflow:auto;padding-right:4px}
+.memory-cell{display:grid;justify-items:center;gap:1px;padding:6px 4px;border:1px solid var(--edge);border-radius:4px;background:#19273a;font-family:Consolas,monospace}
 .memory-address{font-size:10px;color:var(--muted)}
 .memory-value{font-size:13px}
 .memory-read{background:#20453f;border-color:var(--mint)}
 .memory-write{border-color:var(--gold);color:var(--gold)}
+
+/* Instrument panel and playback guidance */
+body {
+  background: radial-gradient(ellipse at 70% -15%, #163f55, transparent 55%), #0a111c;
+  min-height: 100vh;
+}
+main {padding-top: 28px}
+.mast {margin-bottom: 22px}
+.brand {display: flex; align-items: center; gap: 17px}
+.brand p {margin: 2px 0 0; color: var(--muted); font-size: 14px}
+.brand-chip {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, 7px);
+  place-content: center;
+  gap: 3px;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #4c8d88;
+  border-radius: 9px;
+  background: #14343c;
+  box-shadow: 0 0 23px #62e4c01a, inset 0 0 12px #62e4c014;
+}
+.brand-chip::before, .brand-chip::after {
+  content: "";
+  position: absolute;
+  inset: 6px -5px;
+  border-inline: 4px dotted #74aaad;
+}
+.brand-chip::after {transform: rotate(90deg)}
+.brand-chip i {height: 7px; background: var(--mint); border-radius: 1px}
+.panel {border-color: #2c4257; box-shadow: 0 14px 32px #050a1160}
+.controls {background: linear-gradient(160deg,#172638,#111c2b 62%)}
+.field-help {color: var(--muted); font-size: 12px; line-height: 1.45; margin: 7px 0 10px}
+#execute {width: 100%; min-height: 38px}
+.stage-rail {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 5px;
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+.stage-rail li {
+  padding: 8px 3px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--muted);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: #0d1725;
+}
+.stage-rail .is-complete {color: #a4d3c9; border-color: #365952}
+.stage-rail .is-current {border-color: var(--mint); color: #d9fff4; background: #1b423e}
+.canvas-wrap {
+  background-color: #091423;
+  background-image: radial-gradient(#2b435b 1px, transparent 1px);
+  background-size: 15px 15px;
+  border: 1px solid #263b50;
+}
+.transport {padding: 3px 0}
+.stage-detail {margin-top: 9px; border-top: 1px solid var(--edge); padding-top: 10px}
+.stage-detail h3 {font-size: 14px; margin: 0 0 6px; color: var(--mint)}
+#stageDetails {display: flex; flex-wrap: wrap; gap: 7px}
+#stageDetails > p, .stage-card p {margin: 0; font-size: 13px; line-height: 1.4; color: var(--muted)}
+.stage-card {
+  flex: 1 1 230px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-left: 2px solid #588a87;
+  border-radius: 4px;
+  background: #16263a;
+}
+.stage-card strong {display: block; margin-bottom: 3px; font: 600 12px Consolas,monospace; overflow-wrap: anywhere}
+.event {padding: 7px 6px; border-radius: 4px}
+.event:nth-child(odd) {background: #16263a}
+@media(max-width:720px) {
+  .brand {gap: 11px}
+  .brand-chip {width: 34px; height: 34px}
+  .clock {padding: 8px}
+}

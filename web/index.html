@@ -3,13 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dual-Core CPU Simulator</title>
+<title>CoreTrace · Dual-core CPU simulator</title>
 <link rel="stylesheet" href="/style.css">
 <script defer src="/app.js"></script>
 </head>
 <body>
 <main>
-<header class="mast"><div><p class="eyebrow">CCEE 324 / COMPUTER ORGANIZATION</p><h1>Dual-Core CPU Simulator</h1></div><div id="clock" class="clock">CLOCK 00</div></header>
+<header class="mast">
+  <div class="brand"><div class="brand-chip" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div><h1>CoreTrace</h1><p>Dual-core CPU simulator</p></div>
+  </div>
+  <div id="clock" class="clock">CLOCK 00</div>
+</header>
 <div class="workspace">
 <aside class="panel controls">
 <div class="tabs" aria-label="Simulation mode"><button id="instructionMode" aria-pressed="true">Instruction</button><button id="programMode" aria-pressed="false">Programs</button></div>
@@ -17,10 +22,10 @@
 <h2>Trace an instruction</h2>
 <label for="opcode">Instruction</label><select id="opcode"></select>
 <label for="target">Execute on</label><select id="target"><option value="0">Core 0</option><option value="1">Core 1</option></select>
-<label for="command">Assembly</label><input id="command" spellcheck="false">
+<label for="command">Assembly</label><input id="command" spellcheck="false" aria-describedby="opcodeHelp"><p id="opcodeHelp" class="field-help"></p>
 <details><summary>Starting values</summary><div class="seed">
-<label>R1<input id="r1" value="12"></label><label>R2<input id="r2" value="3"></label><label>M[20]<input id="sample" value="42"></label>
-</div><p>Values accept decimal, 0x hex, or 0b binary. M[20] is address 0x20.</p></details>
+<label>R1<input id="r1" value="12"></label><label>R2<input id="r2" value="3"></label><label>Memory 0x20<input id="sample" value="42"></label>
+</div><p>Enter decimal, 0x hex, or 0b binary. Other registers and addresses start at zero.</p></details>
 <button id="execute" class="primary">Start instruction</button>
 </section>
 <section id="programPanel" hidden>
@@ -32,16 +37,24 @@
 <p id="status" role="status"></p>
 </aside>
 <section class="panel circuit">
-<div class="section-head"><h2>Live datapath <small id="stage" aria-live="polite">Ready</small></h2><div class="legend"><span>Data path</span><span>Control</span></div></div>
+<div class="section-head"><h2>Live datapath</h2><div class="legend"><span>Data path</span><span>Control</span></div></div>
+<ol class="stage-rail" aria-label="Instruction stages">
+  <li id="stageFetch">Fetch</li><li id="stageDecode">Decode</li>
+  <li id="stageExecute">Execute</li><li id="stageCommit">Commit</li>
+</ol>
 <div class="canvas-wrap"><canvas id="diagram" aria-label="Circuit connections for both cores and shared memory"></canvas></div>
 <div class="transport"><button id="reset">Reset</button><button id="run" class="primary">Run</button><button id="pause">Pause</button>
 <label class="speed" for="speed">Speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><output id="speedValue" for="speed">1×</output></label></div>
+<div class="stage-detail"><h3 id="stage" aria-live="polite">Ready</h3><div id="stageDetails"></div></div>
 </section>
 </div>
 <div class="inspect">
-<section class="panel"><h2>Registers <small>HEX</small></h2><div id="registers"></div></section>
-<section class="panel"><h2>Shared memory <small>256 BYTES</small></h2><div id="memoryAccess" class="memory-access"></div><div id="memory" class="memory-grid" tabindex="0" aria-label="Shared memory addresses and byte values"></div></section>
-<section class="panel"><h2>Execution trace</h2><div id="trace" aria-live="polite"></div></section>
+<section class="panel"><h2>Registers <small>8-bit · HEX</small></h2><p class="field-help">Each core has its own eight registers. Green marks a value that changed.</p><div id="registers"></div></section>
+<section class="panel"><h2>Shared memory used</h2>
+<div id="memoryAccess" class="memory-access"></div>
+<div id="memory" class="memory-grid" aria-label="Addresses read or written during this run"></div>
+</section>
+<section class="panel"><h2>Execution history</h2><p class="field-help">Completed instructions and their results, newest first.</p><div id="trace" aria-live="polite"></div></section>
 </div>
 </main>
 </body>

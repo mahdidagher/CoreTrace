@@ -161,6 +161,12 @@ function diagram(frame, eventFrame, phase, progress) {
       wire(points.map(([x, y]) => [left + x, y]), active, control, delay);
     const unit = (x, ...args) => block(left + x, ...args);
 
+    ctx.fillStyle = "#102236";
+    ctx.strokeStyle = "#223e57";
+    ctx.lineWidth = 1;
+    ctx.fillRect(left - 7, 5, 500, 324);
+    ctx.strokeRect(left - 7, 5, 500, 324);
+
     text(left + 235, 18, "CORE " + index + (instruction ? "  /  " + instruction : ""),
       event ? colors.data : "#aec7d9", 17);
     path([[107, 63], [151, 63]], fetch);
@@ -207,24 +213,108 @@ function element(tag, text, className) {
   return node;
 }
 
+const instructionInfo = {
+  ADD: "Add the two source registers and save the low 8 bits.",
+  SUB: "Subtract the second source from the first and save the low 8 bits.",
+  AND: "Keep bits that are 1 in both sources.",
+  OR: "Keep bits that are 1 in either source.",
+  XOR: "Keep bits that differ between the sources.",
+  NOR: "Set bits that are 0 in both sources.",
+  SLL: "Shift the first source left by the number in the second source.",
+  SRL: "Shift the first source right by the number in the second source, filling with zeros.",
+  LOAD: "Copy a byte from the shared memory address into the destination register.",
+  STORE: "Copy a register byte to the shared memory address at commit.",
+  HALT: "Stop this core and hold its program counter.",
+};
+
+const stageOrder = ["Fetch", "Decode", "Execute", "Commit"];
+
+function stageCards(frame, eventFrame, phase) {
+  const stage = cursor ? stages[phase] : null;
+  $("stage").textContent = stage ?? "Ready";
+  const current = stageOrder.indexOf(stage);
+  stageOrder.forEach((name, index) => {
+    const item = $("stage" + name);
+    item.classList.toggle("is-current", index === current);
+    item.classList.toggle("is-complete", index < current);
+    if (index === current) item.setAttribute("aria-current", "step");
+    else item.removeAttribute("aria-current");
+  });
+  const panel = $("stageDetails");
+  panel.replaceChildren();
+  if (!stage) {
+    panel.append(element("p", mode === "instruction"
+      ? "Choose a command and start playback to follow it through the circuit."
+      : "Assemble the programs, then press Run to follow both cores."));
+    return;
+  }
+  for (const event of eventFrame.events) {
+    const core = frame.cores[event.core];
+    const mnemonic = event.source.split(/[\s,]+/)[0].toUpperCase();
+    const name = {LW: "LOAD", SW: "STORE"}[mnemonic] ?? mnemonic;
+    const address = event.word & 255;
+    const destination = (event.word >> 9) & 7;
+    let explanation;
+    switch (stage) {
+      case "Fetch":
+        explanation = "Use program counter " + hex(event.pc, 4) + " to read instruction word 0x" + hex(event.word, 4) + ".";
+        break;
+      case "Decode":
+        explanation = "Opcode " + (event.word >> 12).toString(2).padStart(4, "0") + " selects " + name + ". " + instructionInfo[name];
+        break;
+      case "Execute":
+        if (event.alu) {
+          const rs = (event.word >> 6) & 7, rt = (event.word >> 3) & 7;
+          explanation = "The ALU receives R" + rs + " = 0x" + hex(core.registers[rs])
+            + " and R" + rt + " = 0x" + hex(core.registers[rt]) + ".";
+        } else if (event.read) {
+          explanation = "Read 0x" + hex(frame.memory[address]) + " from address 0x" + hex(address)
+            + " as it was at the start of this clock.";
+        } else if (event.store) {
+          explanation = "Queue 0x" + hex(core.registers[destination]) + " for address 0x" + hex(address)
+            + ". The write becomes visible at commit.";
+        } else {
+          explanation = "Signal the core to stop at the end of this clock.";
+        }
+        break;
+      default:
+        if (event.write) {
+          explanation = "Write 0x" + hex(core.registers[destination]) + " to R" + destination
+            + " and advance the program counter.";
+        } else if (event.store) {
+          explanation = "Apply the queued store. Address 0x" + hex(address) + " now contains 0x"
+            + hex(frame.memory[address]) + " after both cores' writes.";
+        } else {
+          explanation = "Core " + event.core + " stopped at program counter " + hex(core.pc, 4) + ".";
+        }
+    }
+    const card = element("article", "", "stage-card");
+    card.append(element("strong", "Core " + event.core + " · " + event.source), element("p", explanation));
+    panel.append(card);
+  }
+}
+
 function render() {
   const position = Math.floor(cursor / stages.length), phase = cursor % stages.length;
   const frame = frames[position], previous = phase === 0 ? frames[position - 1] : null;
   const eventFrame = frames[position + Number(phase !== 0)];
   drawCircuit();
   $("clock").textContent = "CLOCK " + String(eventFrame?.clock ?? 0).padStart(2, "0");
-  $("stage").textContent = cursor ? stages[phase] : "Ready";
+  stageCards(frame, eventFrame, phase);
   $("run").disabled = !lastCursor() || Boolean(timer);
   $("reset").disabled = !frame;
   $("pause").disabled = !timer;
   const memoryScroll = $("memory").scrollTop;
   $("memoryAccess").textContent = "";
   for (const id of ["registers", "memory", "trace"]) $(id).replaceChildren();
-  if (!frame) return;
+  if (!frame) {
+    $("memoryAccess").textContent = "LOAD and STORE will show the addresses they use here.";
+    return;
+  }
 
   frame.cores.forEach((core, index) => {
     const state = core.halted ? "HALTED" : core.next ? "NEXT L" + core.next : "END";
-    $("registers").append(element("div", "C" + index + "  ·  PC " + hex(core.pc, 4) + "  ·  " + state, "core-label"));
+    $("registers").append(element("div", "Core " + index + "  ·  PC " + hex(core.pc, 4) + "  ·  " + state, "core-label"));
     const row = element("div", "", "reggrid");
     core.registers.forEach((value, reg) => {
       row.append(element("span", "R" + reg + " " + hex(value),
@@ -250,19 +340,27 @@ function render() {
         + (event.store ? " to " : " from ") + label + (event.store && phase === 3 ? " (buffered)" : event.read ? " (snapshot)" : "")));
     }
   }
-  if (!accesses.size) $("memoryAccess").textContent = "Address above each byte value. Both are hex.";
+  const usedAddresses = new Set(accesses.keys());
+  for (let clock = 1; clock <= position; clock++) {
+    for (const event of frames[clock].events) {
+      if (event.read || event.store) usedAddresses.add(event.word & 255);
+    }
+  }
+  if (!usedAddresses.size) {
+    $("memoryAccess").textContent = "No shared memory used yet. LOAD reads a byte and STORE writes one.";
+  }
 
   let firstActiveCell;
-  frame.memory.forEach((value, address) => {
+  for (const address of [...usedAddresses].sort((a, b) => a - b)) {
     const access = accesses.get(address);
     const cell = element("div", "", "memory-cell");
     if (access?.read) cell.classList.add("memory-read");
     if (access?.store) cell.classList.add("memory-write");
-    cell.append(element("span", "0x" + hex(address), "memory-address"),
-      element("strong", hex(value), "memory-value"));
+    cell.append(element("span", "Address 0x" + hex(address), "memory-address"),
+      element("strong", "Value 0x" + hex(frame.memory[address]), "memory-value"));
     $("memory").append(cell);
     if (access && !firstActiveCell) firstActiveCell = cell;
-  });
+  }
   $("memory").scrollTop = firstActiveCell ? firstActiveCell.offsetTop : memoryScroll;
 
   const history = frames.slice(Math.max(1, position - 9), position + 1).reverse();
@@ -274,17 +372,8 @@ function render() {
       $("trace").append(row);
     }
   }
-  if (phase) {
-    const descriptions = [
-      "", "Fetch the encoded word from instruction ROM.",
-      "Decode the opcode and select the control signals.",
-      "Use the ALU, read memory, or buffer a store as required. Register and memory changes appear at commit.",
-    ];
-    const heading = eventFrame.events.map(event => "C" + event.core + " " + event.source).join(" · ");
-    $("trace").prepend(element("div", stages[phase] + " · " + heading, "event"),
-      element("div", descriptions[phase], "core-label"));
-  } else if (!position) {
-    $("trace").append(element("div", "Press Run to watch the instruction flow through the circuit.", "core-label"));
+  if (!history.length) {
+    $("trace").append(element("div", "History appears after the first instruction commits.", "core-label"));
   }
 }
 
@@ -384,6 +473,7 @@ function selectMode(selection) {
 function fillCommand() {
   const opcode = $("opcode").value;
   const operands = {LOAD: " R3, 0x20", STORE: " R1, 0x20", HALT: ""};
+  $("opcodeHelp").textContent = instructionInfo[opcode] ?? "";
   $("command").value = opcode + (operands[opcode] ?? " R3, R1, R2");
   invalidate();
 }
