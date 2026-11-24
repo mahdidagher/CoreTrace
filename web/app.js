@@ -33,7 +33,9 @@ function diagram(frame, eventFrame, phase, progress) {
 
   function block(x, y, w, title, detail, active, shape) {
     const h = 46;
-    const fill = active ? "#193a3c" : "#172638";
+    const fill = ctx.createLinearGradient(x, y, x, y + h);
+    fill.addColorStop(0, active ? "#214d4e" : "#20354c");
+    fill.addColorStop(1, active ? "#132f37" : "#142437");
     ctx.fillStyle = fill;
     ctx.strokeStyle = active ? colors.data : colors.idle;
     ctx.lineWidth = active ? 1.7 : 1;
@@ -125,15 +127,32 @@ function diagram(frame, eventFrame, phase, progress) {
         length: Math.hypot(endX - startX, endY - startY)};
     });
     const length = segments.reduce((sum, segment) => sum + segment.length, 0);
-    let distance = Math.min(1, (progress - delay) / (1 - delay)) * length;
+    const distance = Math.min(1, (progress - delay) / (1 - delay)) * length;
+    const trailStart = Math.max(0, distance - 30);
+    let segmentStart = 0;
     for (const segment of segments) {
-      if (distance > segment.length) {
-        distance -= segment.length;
+      const segmentEnd = segmentStart + segment.length;
+      if (segmentEnd < trailStart) {
+        segmentStart = segmentEnd;
         continue;
       }
-      const fraction = distance / segment.length;
-      const dotX = segment.startX + segment.dx * fraction;
-      const dotY = segment.startY + segment.dy * fraction;
+      const from = (Math.max(segmentStart, trailStart) - segmentStart) / segment.length;
+      const to = (Math.min(segmentEnd, distance) - segmentStart) / segment.length;
+      const dotX = segment.startX + segment.dx * to;
+      const dotY = segment.startY + segment.dy * to;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 4;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.moveTo(segment.startX + segment.dx * from, segment.startY + segment.dy * from);
+      ctx.lineTo(dotX, dotY);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      if (segmentEnd < distance) {
+        segmentStart = segmentEnd;
+        continue;
+      }
       ctx.shadowColor = color;
       ctx.shadowBlur = 12;
       ctx.fillStyle = "#f5ffff";
@@ -161,14 +180,23 @@ function diagram(frame, eventFrame, phase, progress) {
       wire(points.map(([x, y]) => [left + x, y]), active, control, delay);
     const unit = (x, ...args) => block(left + x, ...args);
 
-    ctx.fillStyle = "#102236";
-    ctx.strokeStyle = "#223e57";
+    const accent = index ? "#adadff" : "#68e6ce";
+    const backplane = ctx.createLinearGradient(left, 5, left + 500, 329);
+    backplane.addColorStop(0, index ? "#171f3a" : "#122d3a");
+    backplane.addColorStop(1, "#0c1828");
+    ctx.fillStyle = backplane;
+    ctx.strokeStyle = index ? "#394273" : "#2b5761";
     ctx.lineWidth = 1;
-    ctx.fillRect(left - 7, 5, 500, 324);
-    ctx.strokeRect(left - 7, 5, 500, 324);
-
-    text(left + 235, 18, "CORE " + index + (instruction ? "  /  " + instruction : ""),
-      event ? colors.data : "#aec7d9", 17);
+    ctx.beginPath();
+    ctx.roundRect(left - 7, 5, 500, 324, 11);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = accent;
+    ctx.fillRect(left + 10, 11, 3, 14);
+    text(left + 56, 18, "CORE " + index, accent, 15);
+    text(left + 252, 18, instruction ?? (core?.halted ? "HALTED" : "IDLE"),
+      event ? colors.data : "#91a9c1", 14);
+    text(left + 428, 18, "PC " + (core ? hex(core.pc, 4) : "0000"), "#a4bdd5", 12);
     path([[107, 63], [151, 63]], fetch);
     path([[275, 63], [328, 63]], fetch, false, 0.42);
     path([[389, 86], [389, 111]], decoding, true);
@@ -385,6 +413,7 @@ function status(message, error = false) {
 function drawCircuit() {
   const phase = cursor % stages.length;
   const position = Math.floor(cursor / stages.length);
+  if (cursor) $("stage" + stages[phase]).style.setProperty("--phase-progress", (progress * 100) + "%");
   diagram(frames[position], frames[position + Number(phase !== 0)], phase, progress);
 }
 

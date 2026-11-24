@@ -100,3 +100,41 @@ main {padding-top: 28px}
   .brand-chip {width: 34px; height: 34px}
   .clock {padding: 8px}
 }
+
+/* Circuit surface and signal hierarchy */
+:root {--surface:#101d2e; --edge:#2b435b; --muted:#aec3d6}
+.workspace, .inspect {gap: 16px}
+.panel {padding: 16px; border-radius: 16px}
+.circuit {background: linear-gradient(155deg,#17283d,#101b2d 52%)}
+.controls .tabs {padding: 4px; border: 1px solid var(--edge); border-radius: 10px; background: #0b1625}
+.controls .tabs button {border-color: transparent; background: transparent}
+.controls .tabs button[aria-pressed=true] {border-color: #365e67; background: #1b3945; color: #bfffee}
+.clock {
+  border-radius: 8px;
+  border-color: #46777d;
+  background: #102b36;
+  box-shadow: inset 0 0 15px #62e4c013;
+  font-variant-numeric: tabular-nums;
+}
+.stage-rail {gap: 7px}
+.stage-rail li {position: relative; overflow: hidden; padding: 9px 4px 10px}
+.stage-rail li::after {
+  content: "";
+  position: absolute;
+  inset: auto auto 0 0;
+  height: 3px;
+  width: 0;
+  background: var(--mint);
+}
+.stage-rail .is-current::after {width: var(--phase-progress,0%)}
+.stage-rail .is-complete::after {width: 100%; opacity: .25}
+.canvas-wrap {margin-block: 10px; border-color: #314960; box-shadow: inset 0 0 25px #03071180}
+.transport button {min-width: 62px}
+.stage-card {border: 1px solid #304b61; border-left: 3px solid #62e4c0; border-radius: 8px}
+.stage-card + .stage-card {border-left-color: #adadff}
+.inspect .panel h2 {padding-bottom: 8px; border-bottom: 1px solid #293f55}
+.reggrid span {border: 1px solid #2b425b; padding: 6px 2px; border-radius: 6px}
+.reggrid .changed {border-color: #4d997f}
+.memory-cell {border-radius: 7px}
+.event:nth-child(odd) {background: #19283e}
+@media (max-width:720px) {.panel{padding:12px}.workspace,.inspect{gap:10px}}
