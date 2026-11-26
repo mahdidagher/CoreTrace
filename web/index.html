@@ -1,61 +1,516 @@
+
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CoreTrace · Dual-core CPU simulator</title>
-<link rel="stylesheet" href="/style.css">
-<script defer src="/app.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CoreTrace · Dual-core CPU simulator</title>
+
+    <link rel="stylesheet" href="/style.css">
+    <script defer src="/app.js"></script>
 </head>
+
 <body>
 <main>
-<header class="mast">
-  <div class="brand"><div class="brand-chip" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-    <div><h1>CoreTrace</h1><p>Dual-core CPU simulator</p></div>
-  </div>
-  <div id="clock" class="clock">CLOCK 00</div>
-</header>
-<div class="workspace">
-<aside class="panel controls">
-<div class="tabs" aria-label="Simulation mode"><button id="instructionMode" aria-pressed="true">Instruction</button><button id="programMode" aria-pressed="false">Programs</button></div>
-<section id="instructionPanel">
-<h2>Trace an instruction</h2>
-<label for="opcode">Instruction</label><select id="opcode"></select>
-<label for="target">Execute on</label><select id="target"><option value="0">Core 0</option><option value="1">Core 1</option></select>
-<label for="command">Assembly</label><input id="command" spellcheck="false" aria-describedby="opcodeHelp"><p id="opcodeHelp" class="field-help"></p>
-<details><summary>Starting values</summary><div class="seed">
-<label>R1<input id="r1" value="12"></label><label>R2<input id="r2" value="3"></label><label>Memory 0x20<input id="sample" value="42"></label>
-</div><p>Enter decimal, 0x hex, or 0b binary. Other registers and addresses start at zero.</p></details>
-<button id="execute" class="primary">Start instruction</button>
-</section>
-<section id="programPanel" hidden>
-<h2>Assembly programs</h2>
-<label for="source0">Core 0</label><textarea id="source0" spellcheck="false" rows="7"></textarea>
-<label for="source1">Core 1</label><textarea id="source1" spellcheck="false" rows="7"></textarea>
-<div class="actions"><button id="assemble" class="primary">Assemble</button><button id="demo">Load demo</button></div>
-</section>
-<p id="status" role="status"></p>
-</aside>
-<section class="panel circuit">
-<div class="section-head"><h2>Live datapath</h2><div class="legend"><span>Data path</span><span>Control</span></div></div>
-<ol class="stage-rail" aria-label="Instruction stages">
-  <li id="stageFetch">Fetch</li><li id="stageDecode">Decode</li>
-  <li id="stageExecute">Execute</li><li id="stageCommit">Commit</li>
-</ol>
-<div class="canvas-wrap"><canvas id="diagram" aria-label="Circuit connections for both cores and shared memory"></canvas></div>
-<div class="transport"><button id="reset">Reset</button><button id="run" class="primary">Run</button><button id="pause">Pause</button>
-<label class="speed" for="speed">Speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><output id="speedValue" for="speed">1×</output></label></div>
-<div class="stage-detail"><h3 id="stage" aria-live="polite">Ready</h3><div id="stageDetails"></div></div>
-</section>
-</div>
-<div class="inspect">
-<section class="panel"><h2>Registers <small>8-bit · HEX</small></h2><p class="field-help">Each core has its own eight registers. Green marks a value that changed.</p><div id="registers"></div></section>
-<section class="panel"><h2>Shared memory used</h2>
-<div id="memoryAccess" class="memory-access"></div>
-<div id="memory" class="memory-grid" aria-label="Addresses read or written during this run"></div>
-</section>
-<section class="panel"><h2>Execution history</h2><p class="field-help">Completed instructions and their results, newest first.</p><div id="trace" aria-live="polite"></div></section>
-</div>
+
+    <!-- HEADER -->
+    <header class="mast">
+
+        <div class="brand">
+            <div class="brand-chip" aria-hidden="true">
+                <i></i><i></i><i></i><i></i>
+            </div>
+
+            <div>
+                <h1>CoreTrace</h1>
+                <p>Dual-core CPU simulator</p>
+            </div>
+        </div>
+
+        <div id="clock" class="clock">CLOCK 00</div>
+
+    </header>
+
+    <!-- SIMULATOR WORKSPACE -->
+    <div class="workspace">
+
+        <!-- SIMULATION CONTROLS -->
+        <aside class="panel controls">
+
+            <div class="tabs" aria-label="Simulation mode">
+                <button id="instructionMode" aria-pressed="true">
+                    Instruction
+                </button>
+
+                <button id="programMode" aria-pressed="false">
+                    Programs
+                </button>
+            </div>
+
+            <!-- INSTRUCTION MODE -->
+            <section id="instructionPanel">
+
+                <h2>Trace an instruction</h2>
+
+                <label for="opcode">Instruction</label>
+                <select id="opcode"></select>
+
+                <label for="target">Execute on</label>
+
+                <select id="target">
+                    <option value="0">Core 0</option>
+                    <option value="1">Core 1</option>
+                </select>
+
+                <label for="command">Assembly</label>
+
+                <input
+                    id="command"
+                    spellcheck="false"
+                    aria-describedby="opcodeHelp"
+                >
+
+                <p id="opcodeHelp" class="field-help"></p>
+
+                <details>
+
+                    <summary>Starting values</summary>
+
+                    <div class="seed">
+
+                        <label>
+                            R1
+                            <input id="r1" value="12">
+                        </label>
+
+                        <label>
+                            R2
+                            <input id="r2" value="3">
+                        </label>
+
+                        <label>
+                            Memory 0x20
+                            <input id="sample" value="42">
+                        </label>
+
+                    </div>
+
+                    <p>
+                        Enter decimal, 0x hex, or 0b binary.
+                        Other registers and addresses start at zero.
+                    </p>
+
+                </details>
+
+                <button id="execute" class="primary">
+                    Start instruction
+                </button>
+
+            </section>
+
+            <!-- PROGRAM MODE -->
+            <section id="programPanel" hidden>
+
+                <h2>Assembly programs</h2>
+
+                <label for="source0">Core 0</label>
+
+                <textarea
+                    id="source0"
+                    spellcheck="false"
+                    rows="7"
+                ></textarea>
+
+                <label for="source1">Core 1</label>
+
+                <textarea
+                    id="source1"
+                    spellcheck="false"
+                    rows="7"
+                ></textarea>
+
+                <div class="actions">
+
+                    <button id="assemble" class="primary">
+                        Assemble
+                    </button>
+
+                    <button id="demo">
+                        Load demo
+                    </button>
+
+                </div>
+
+            </section>
+
+            <p id="status" role="status"></p>
+
+        </aside>
+
+        <!-- LIVE DATAPATH -->
+        <section class="panel circuit">
+
+            <div class="section-head">
+
+                <h2>Live datapath</h2>
+
+                <div class="legend">
+                    <span>Data path</span>
+                    <span>Control</span>
+                </div>
+
+            </div>
+
+            <ol class="stage-rail" aria-label="Instruction stages">
+
+                <li id="stageFetch">Fetch</li>
+                <li id="stageDecode">Decode</li>
+                <li id="stageExecute">Execute</li>
+                <li id="stageCommit">Commit</li>
+
+            </ol>
+
+            <div class="canvas-wrap">
+
+                <canvas
+                    id="diagram"
+                    aria-label="Circuit connections for both cores and shared memory"
+                ></canvas>
+
+            </div>
+
+            <div class="transport">
+
+                <button id="reset">Reset</button>
+
+                <button id="run" class="primary">
+                    Run
+                </button>
+
+                <button id="pause">Pause</button>
+
+                <label class="speed" for="speed">
+
+                    Speed
+
+                    <input
+                        id="speed"
+                        type="range"
+                        min="0.25"
+                        max="3"
+                        step="0.25"
+                        value="1"
+                    >
+
+                    <output id="speedValue" for="speed">
+                        1×
+                    </output>
+
+                </label>
+
+            </div>
+
+            <div class="stage-detail">
+
+                <h3 id="stage" aria-live="polite">
+                    Ready
+                </h3>
+
+                <div id="stageDetails"></div>
+
+            </div>
+
+        </section>
+
+    </div>
+
+    <!-- REGISTERS, MEMORY AND EXECUTION HISTORY -->
+    <div class="inspect">
+
+        <!-- REGISTERS -->
+        <section class="panel">
+
+            <h2>
+                Registers <small>8-bit · HEX</small>
+            </h2>
+
+            <p class="field-help">
+                Each core has its own eight registers.
+                Green marks a value that changed.
+            </p>
+
+            <div id="registers"></div>
+
+        </section>
+
+        <!-- SHARED MEMORY -->
+        <section class="panel">
+
+            <h2>Shared memory used</h2>
+
+            <div
+                id="memoryAccess"
+                class="memory-access"
+            ></div>
+
+            <div
+                id="memory"
+                class="memory-grid"
+                aria-label="Addresses read or written during this run"
+            ></div>
+
+        </section>
+
+        <!-- EXECUTION HISTORY -->
+        <section class="panel">
+
+            <h2>Execution history</h2>
+
+            <p class="field-help">
+                Completed instructions and their results,
+                newest first.
+            </p>
+
+            <div id="trace" aria-live="polite"></div>
+
+        </section>
+
+    </div>
+
+    <!-- ======================================
+         CPU PERFORMANCE MONITOR
+    ======================================= -->
+
+    <section class="panel performance-panel">
+
+        <!-- DASHBOARD HEADER -->
+        <div class="performance-heading">
+
+            <div>
+                <h2>CPU Performance Monitor</h2>
+                <p>Live processor execution statistics</p>
+            </div>
+
+            <span id="perfStatus" class="perf-status">
+                Ready
+            </span>
+
+        </div>
+
+        <!-- MAIN CPU STATISTICS -->
+        <div class="perf-grid">
+
+            <div class="perf-card">
+                <span>Clock Cycles</span>
+                <strong id="perfCycles">0</strong>
+            </div>
+
+            <div class="perf-card">
+                <span>Instructions Executed</span>
+                <strong id="perfInstructions">0</strong>
+            </div>
+
+            <div class="perf-card">
+                <span>IPC</span>
+                <strong id="perfIPC">0.00</strong>
+            </div>
+
+            <div class="perf-card">
+                <span>CPI</span>
+                <strong id="perfCPI">0.0000</strong>
+            </div>
+
+            <div class="perf-card">
+                <span>CPU Utilization</span>
+                <strong id="perfUtilization">0%</strong>
+            </div>
+
+            <div class="perf-card">
+                <span>Idle Core Cycles</span>
+                <strong id="perfIdle">0</strong>
+            </div>
+
+        </div>
+
+        <!-- INDIVIDUAL CORE MONITORING -->
+        <div class="perf-core-grid">
+
+            <!-- CORE 0 -->
+            <div class="perf-card">
+
+                <h3>Core 0</h3>
+
+                <strong id="core0Util">0%</strong>
+
+                <div class="perf-progress">
+
+                    <div
+                        id="core0Bar"
+                        class="perf-fill core0-fill"
+                    ></div>
+
+                </div>
+
+                <div class="perf-detail">
+                    <span>Instructions</span>
+                    <b id="core0Instructions">0</b>
+                </div>
+
+                <div class="perf-detail">
+                    <span>Active cycles</span>
+                    <b id="core0Active">0</b>
+                </div>
+
+                <div class="perf-detail">
+                    <span>Idle cycles</span>
+                    <b id="core0Idle">0</b>
+                </div>
+
+                <div class="perf-detail">
+                    <span>Status</span>
+                    <b id="core0Status">Ready</b>
+                </div>
+
+                <div class="perf-detail">
+                    <span>Last instruction</span>
+                    <b id="core0Instruction">—</b>
+                </div>
+
+            </div>
+
+            <!-- CORE 1 -->
+            <div class="perf-card">
+
+                <h3>Core 1</h3>
+
+                <strong id="core1Util">0%</strong>
+
+                <div class="perf-progress">
+
+                    <div
+                        id="core1Bar"
+                        class="perf-fill core1-fill"
+                    ></div>
+
+                </div>
+
+                <div class="perf-detail">
+                    <span>Instructions</span>
+                    <b id="core1Instructions">0</b>
+                </div>
+
+                <div class="perf-detail">
+                    <span>Active cycles</span>
+                    <b id="core1Active">0</b>
+                </div>
+
+                <div class="perf-detail">
+                    <span>Idle cycles</span>
+                    <b id="core1Idle">0</b>
+                </div>
+
+                <div class="perf-detail">
+                    <span>Status</span>
+                    <b id="core1Status">Ready</b>
+                </div>
+
+                <div class="perf-detail">
+                    <span>Last instruction</span>
+                    <b id="core1Instruction">—</b>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- CPU ACTIVITY GRAPH -->
+        <div class="perf-card">
+
+            <h3>CPU Activity History</h3>
+
+            <p>
+                Instantaneous utilization per completed clock
+            </p>
+
+            <svg
+                id="perfGraph"
+                viewBox="0 0 800 220"
+                role="img"
+                aria-label="CPU utilization history"
+            ></svg>
+
+            <div class="perf-legend">
+
+                <span class="legend-cpu">
+                    Overall CPU
+                </span>
+
+                <span class="legend-core0">
+                    Core 0
+                </span>
+
+                <span class="legend-core1">
+                    Core 1
+                </span>
+
+            </div>
+
+        </div>
+
+        <!-- INSTRUCTION DISTRIBUTION -->
+        <div class="perf-card">
+
+            <h3>Instruction Distribution</h3>
+
+            <p>
+                Distribution of executed instruction categories
+            </p>
+
+            <div id="perfDistribution"></div>
+
+        </div>
+
+        <!-- SHARED MEMORY PERFORMANCE -->
+        <h3>Shared Memory Statistics</h3>
+
+        <div class="perf-grid">
+
+            <div class="perf-card">
+                <span>Memory Reads</span>
+                <strong id="perfReads">0</strong>
+            </div>
+
+            <div class="perf-card">
+                <span>Memory Writes</span>
+                <strong id="perfWrites">0</strong>
+            </div>
+
+            <div class="perf-card">
+                <span>Write Conflicts</span>
+                <strong id="perfWriteConflicts">0</strong>
+            </div>
+
+            <div class="perf-card">
+                <span>Read/Write Conflicts</span>
+                <strong id="perfRWConflicts">0</strong>
+            </div>
+
+            <div class="perf-card">
+                <span>Shared Reads</span>
+                <strong id="perfSharedReads">0</strong>
+            </div>
+
+        </div>
+
+        <!-- ARCHITECTURE NOTES -->
+        <p class="perf-note">
+            Statistics include HALT instructions.
+            Memory conflicts do not introduce additional cycles
+            in this processor architecture.
+        </p>
+
+    </section>
+
 </main>
 </body>
 </html>
